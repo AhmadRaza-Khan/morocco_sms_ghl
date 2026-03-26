@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import { createCredential, deleteCredential, getCredentials, updateCredential } from "@/actions/page";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Trash } from "lucide-react";
 
 type Credential = {
   _id: string;
@@ -38,18 +38,26 @@ type Credential = {
   sender_id: string;
 };
 
+const formData = {
+    locationId: "",
+    sub_account: "",
+    sub_account_pass: "",
+    sender_id: "",
+  };
+
 export default function Home() {
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [show, setShow] = useState(false);
-  const [form, setForm] = useState({
-    locationId: "",
-    sub_account: "",
-    sub_account_pass: "",
-    sender_id: "",
-  });
+  const [form, setForm] = useState(formData);
   const addToast = useToast();
+
+  const resetForm = () => {
+    setEditId(null);
+    setForm(formData);
+    setShow(false);
+  };
 
 const load = async () => {
   const data = await getCredentials();
@@ -103,11 +111,18 @@ const load = async () => {
       addToast(res.message || "Delete failed", "error");
     }
   };
+  
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <h2 className="text-2xl mb-4">Accounts Credentials</h2>
-      <Button onClick={() => setModalOpen(true)} className="mb-4 cursor-pointer">
+      <Button
+        onClick={() => {
+          resetForm();
+          setModalOpen(true);
+        }}
+        className="mb-4 cursor-pointer"
+      >
         + Add New
       </Button>
 
@@ -133,7 +148,7 @@ const load = async () => {
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" className="cursor-pointer" size="sm">
-                      Delete
+                      <Trash />
                     </Button>
                   </AlertDialogTrigger>
 
@@ -163,7 +178,13 @@ const load = async () => {
       </Table>
 
       {/* Modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+      <Dialog
+        open={modalOpen}
+        onOpenChange={(open) => {
+          setModalOpen(open);
+          if (!open) resetForm();
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editId ? "Edit Credential" : "Add Credential"}</DialogTitle>
