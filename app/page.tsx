@@ -1,65 +1,198 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+import { Input } from "@/components/ui/input";
+
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/components/ui/use-toast";
+import { createCredential, deleteCredential, getCredentials, updateCredential } from "@/actions/page";
+import { Eye, EyeOff } from "lucide-react";
+
+type Credential = {
+  _id: string;
+  locationId: string;
+  sub_account: string;
+  sub_account_pass: string;
+  sender_id: string;
+};
 
 export default function Home() {
+  const [credentials, setCredentials] = useState<Credential[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [show, setShow] = useState(false);
+  const [form, setForm] = useState({
+    locationId: "",
+    sub_account: "",
+    sub_account_pass: "",
+    sender_id: "",
+  });
+  const addToast = useToast();
+
+const load = async () => {
+  const data = await getCredentials();
+  setCredentials(data as any);
+};
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const save = async () => {
+    try {
+      let res;
+
+      if (editId) {
+        res = await updateCredential(editId, form);
+      } else {
+        res = await createCredential(form);
+      }
+
+      if (res.success) {
+        addToast(res.message || "Saved successfully", "success");
+        setModalOpen(false);
+        load();
+      } else {
+        addToast(res.message, "error");
+      }
+    } catch (error: any) {
+      addToast(error.message || "Server error", "error");
+    }
+  };
+
+  const edit = (item: Credential) => {
+    setEditId(item._id);
+    setForm({
+      locationId: item.locationId,
+      sub_account: item.sub_account,
+      sub_account_pass: item.sub_account_pass,
+      sender_id: item.sender_id,
+    });
+    setModalOpen(true);
+  };
+
+  const del = async (id: string) => {
+    const res = await deleteCredential(id);
+
+    if (res.success) {
+      addToast(res.message || "Deleted successfully", "success");
+      load();
+    } else {
+      addToast(res.message || "Delete failed", "error");
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <h2 className="text-2xl mb-4">Accounts Credentials</h2>
+      <Button onClick={() => setModalOpen(true)} className="mb-4 cursor-pointer">
+        + Add New
+      </Button>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Location ID</TableHead>
+            <TableHead>Sub Account</TableHead>
+            <TableHead>Sender</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {credentials.map((item) => (
+            <TableRow key={item._id}>
+              <TableCell>{item.locationId}</TableCell>
+              <TableCell>{item.sub_account}</TableCell>
+              <TableCell>{item.sender_id}</TableCell>
+              <TableCell className="space-x-2">
+                <Button className="hover:text-white hover:bg-black cursor-pointer" variant="outline" size="sm" onClick={() => edit(item)}>
+                  Edit
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="cursor-pointer" size="sm">
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the credential.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => del(item._id)}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* Modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editId ? "Edit Credential" : "Add Credential"}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Input placeholder="Location ID" value={form.locationId} onChange={(e) => setForm({ ...form, locationId: e.target.value })} />
+            <Input placeholder="Sub Account" value={form.sub_account} onChange={(e) => setForm({ ...form, sub_account: e.target.value })} />
+            <Input placeholder="Sender ID" value={form.sender_id} onChange={(e) => setForm({ ...form, sender_id: e.target.value })} />
+            <div className="relative">
+            <Input type={show ? "text" : "password"} placeholder="Password" value={form.sub_account_pass} onChange={(e) => setForm({ ...form, sub_account_pass: e.target.value })} />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setShow(!show)}
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+              {show ? <EyeOff size={18} /> : <Eye size={18} />}
+            </Button>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4 flex justify-end space-x-2">
+            <Button onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button onClick={save}>{editId ? "Update" : "Save"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
