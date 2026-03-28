@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       ); 
     }
 
-    const message = `Bonjour ${name}, ${senderData.text}. ${senderData.link}`
+    const message = `Bonjour ${name},\n${senderData.text}\n👉 ${senderData.link}`;
 
     const payload = {
       sub_account: cred.sub_account,
