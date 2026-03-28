@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
-import { createCredential, deleteCredential, getCredentials, updateCredential } from "@/actions/page";
+import { createCredential, createSms, deleteCredential, deleteSms, getCredentials, getSmsData, updateCredential, updateSms } from "@/actions/page";
 import { Eye, EyeOff, Trash } from "lucide-react";
 
 type Credential = {
@@ -38,6 +38,15 @@ type Credential = {
   sender_id: string;
 };
 
+
+type SmsItem = {
+  _id: string;
+  sender_id: string;
+  tags: string;
+  text: string;
+  link: string;
+};
+
 const formData = {
     locationId: "",
     sub_account: "",
@@ -45,12 +54,24 @@ const formData = {
     sender_id: "",
   };
 
+
+const smsFormData = {
+  sender_id: "",
+  tags: "",
+  text: "",
+  link: "",
+};
+
 export default function Home() {
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [show, setShow] = useState(false);
   const [form, setForm] = useState(formData);
+  const [smsList, setSmsList] = useState<SmsItem[]>([]);
+  const [smsModalOpen, setSmsModalOpen] = useState(false);
+  const [smsEditId, setSmsEditId] = useState<string | null>(null);
+  const [smsForm, setSmsForm] = useState(smsFormData);
   const addToast = useToast();
 
   const resetForm = () => {
@@ -111,6 +132,64 @@ const load = async () => {
       addToast(res.message || "Delete failed", "error");
     }
   };
+
+  const loadSms = async () => {
+  const data = await getSmsData(); // create this in backend
+  setSmsList(data as any);
+};
+
+useEffect(() => {
+  loadSms();
+}, []);
+
+const saveSms = async () => {
+  try {
+    let res;
+
+    if (smsEditId) {
+      res = await updateSms(smsEditId, smsForm);
+    } else {
+      res = await createSms(smsForm);
+    }
+
+    if (res.success) {
+      addToast(res.message || "Saved successfully", "success");
+      setSmsModalOpen(false);
+      loadSms();
+    } else {
+      addToast(res.message, "error");
+    }
+  } catch (error: any) {
+    addToast(error.message || "Server error", "error");
+  }
+};
+
+const editSms = (item: SmsItem) => {
+  setSmsEditId(item._id);
+  setSmsForm({
+    sender_id: item.sender_id,
+    tags: item.tags,
+    text: item.text,
+    link: item.link,
+  });
+  setSmsModalOpen(true);
+};
+
+const deleteSmsItem = async (id: string) => {
+  const res = await deleteSms(id);
+
+  if (res.success) {
+    addToast(res.message || "Deleted successfully", "success");
+    loadSms();
+  } else {
+    addToast(res.message || "Delete failed", "error");
+  }
+};
+
+const resetSmsForm = () => {
+  setSmsEditId(null);
+  setSmsForm(smsFormData);
+};
   
 
   return (
@@ -214,6 +293,139 @@ const load = async () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ================= SMS SECTION ================= */}
+
+<div className="mt-10">
+  <h2 className="text-2xl mb-4">SMS Configuration</h2>
+
+  <Button
+    onClick={() => {
+      resetSmsForm();
+      setSmsModalOpen(true);
+    }}
+    className="mb-4 cursor-pointer"
+  >
+    + Add SMS
+  </Button>
+
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>Sender ID</TableHead>
+        <TableHead>Tags</TableHead>
+        <TableHead>Text</TableHead>
+        <TableHead>Link</TableHead>
+        <TableHead>Actions</TableHead>
+      </TableRow>
+    </TableHeader>
+
+    <TableBody>
+      {smsList.map((item) => (
+        <TableRow key={item._id}>
+          <TableCell>{item.sender_id}</TableCell>
+          <TableCell>{item.tags}</TableCell>
+          <TableCell>{item.text}</TableCell>
+          <TableCell>{item.link}</TableCell>
+
+          <TableCell className="space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => editSms(item)}
+            >
+              Edit
+            </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash />
+                </Button>
+              </AlertDialogTrigger>
+
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete the SMS config.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteSmsItem(item._id)}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+  <Dialog
+  open={smsModalOpen}
+  onOpenChange={(open) => {
+    setSmsModalOpen(open);
+    if (!open) resetSmsForm();
+  }}
+>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>
+        {smsEditId ? "Edit SMS" : "Add SMS"}
+      </DialogTitle>
+    </DialogHeader>
+
+    <div className="space-y-4">
+      <Input
+        placeholder="Sender ID"
+        value={smsForm.sender_id}
+        onChange={(e) =>
+          setSmsForm({ ...smsForm, sender_id: e.target.value })
+        }
+      />
+
+      <Input
+        placeholder="Tags"
+        value={smsForm.tags}
+        onChange={(e) =>
+          setSmsForm({ ...smsForm, tags: e.target.value })
+        }
+      />
+
+      <Input
+        placeholder="Text"
+        value={smsForm.text}
+        onChange={(e) =>
+          setSmsForm({ ...smsForm, text: e.target.value })
+        }
+      />
+
+      <Input
+        placeholder="Link"
+        value={smsForm.link}
+        onChange={(e) =>
+          setSmsForm({ ...smsForm, link: e.target.value })
+        }
+      />
+    </div>
+
+    <DialogFooter className="mt-4 flex justify-end space-x-2">
+      <Button onClick={() => setSmsModalOpen(false)}>
+        Cancel
+      </Button>
+      <Button onClick={saveSms}>
+        {smsEditId ? "Update" : "Save"}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+</div>
     </div>
   );
 }
