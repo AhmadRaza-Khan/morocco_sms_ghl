@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
-import { createCredential, createSms, deleteCredential, deleteSms, getCredentials, getSmsData, updateCredential, updateSms } from "@/actions/page";
+import { createCampaign, createCredential, createSms, deleteCampaign, deleteCredential, deleteSms, getCampaigns, getCredentials, getSmsData, updateCampaign, updateCredential, updateSms } from "@/actions/page";
 import { Eye, EyeOff, Trash } from "lucide-react";
 
 type Credential = {
@@ -38,13 +38,22 @@ type Credential = {
   sender_id: string;
 };
 
+type CampaignItem = {
+  _id: string;
+  tags: string;
+  compaign: string;
+};
+
+const campaignFormData = {
+  tags: "",
+  compaign: "",
+};
 
 type SmsItem = {
   _id: string;
   sender_id: string;
   tags: string;
   text: string;
-  link: string;
 };
 
 const formData = {
@@ -59,7 +68,6 @@ const smsFormData = {
   sender_id: "",
   tags: "",
   text: "",
-  link: "",
 };
 
 export default function Home() {
@@ -72,6 +80,10 @@ export default function Home() {
   const [smsModalOpen, setSmsModalOpen] = useState(false);
   const [smsEditId, setSmsEditId] = useState<string | null>(null);
   const [smsForm, setSmsForm] = useState(smsFormData);
+  const [campaignList, setCampaignList] = useState<CampaignItem[]>([]);
+  const [campaignModalOpen, setCampaignModalOpen] = useState(false);
+  const [campaignEditId, setCampaignEditId] = useState<string | null>(null);
+  const [campaignForm, setCampaignForm] = useState(campaignFormData);
   const addToast = useToast();
 
   const resetForm = () => {
@@ -134,7 +146,7 @@ const load = async () => {
   };
 
   const loadSms = async () => {
-  const data = await getSmsData(); // create this in backend
+  const data = await getSmsData();
   setSmsList(data as any);
 };
 
@@ -170,7 +182,6 @@ const editSms = (item: SmsItem) => {
     sender_id: item.sender_id,
     tags: item.tags,
     text: item.text,
-    link: item.link,
   });
   setSmsModalOpen(true);
 };
@@ -189,6 +200,62 @@ const deleteSmsItem = async (id: string) => {
 const resetSmsForm = () => {
   setSmsEditId(null);
   setSmsForm(smsFormData);
+};
+
+const loadCampaigns = async () => {
+  const data = await getCampaigns();
+  setCampaignList(data as any);
+};
+
+useEffect(() => {
+  loadCampaigns();
+}, []);
+
+const saveCampaign = async () => {
+  try {
+    let res;
+
+    if (campaignEditId) {
+      res = await updateCampaign(campaignEditId, campaignForm);
+    } else {
+      res = await createCampaign(campaignForm);
+    }
+
+    if (res.success) {
+      addToast(res.message || "Saved successfully", "success");
+      setCampaignModalOpen(false);
+      loadCampaigns();
+    } else {
+      addToast(res.message, "error");
+    }
+  } catch (error: any) {
+    addToast(error.message || "Server error", "error");
+  }
+};
+
+const editCampaign = (item: CampaignItem) => {
+  setCampaignEditId(item._id);
+  setCampaignForm({
+    tags: item.tags,
+    compaign: item.compaign,
+  });
+  setCampaignModalOpen(true);
+};
+
+const deleteCampaignItem = async (id: string) => {
+  const res = await deleteCampaign(id);
+
+  if (res.success) {
+    addToast(res.message || "Deleted successfully", "success");
+    loadCampaigns();
+  } else {
+    addToast(res.message || "Delete failed", "error");
+  }
+};
+
+const resetCampaignForm = () => {
+  setCampaignEditId(null);
+  setCampaignForm(campaignFormData);
 };
   
 
@@ -315,7 +382,6 @@ const resetSmsForm = () => {
         <TableHead>Sender ID</TableHead>
         <TableHead>Tags</TableHead>
         <TableHead>Text</TableHead>
-        <TableHead>Link</TableHead>
         <TableHead>Actions</TableHead>
       </TableRow>
     </TableHeader>
@@ -326,7 +392,6 @@ const resetSmsForm = () => {
           <TableCell>{item.sender_id}</TableCell>
           <TableCell>{item.tags}</TableCell>
           <TableCell>{item.text}</TableCell>
-          <TableCell>{item.link}</TableCell>
 
           <TableCell className="space-x-2">
             <Button
@@ -406,13 +471,6 @@ const resetSmsForm = () => {
         }
       />
 
-      <Input
-        placeholder="Link"
-        value={smsForm.link}
-        onChange={(e) =>
-          setSmsForm({ ...smsForm, link: e.target.value })
-        }
-      />
     </div>
 
     <DialogFooter className="mt-4 flex justify-end space-x-2">
@@ -426,6 +484,117 @@ const resetSmsForm = () => {
   </DialogContent>
 </Dialog>
 </div>
+
+<div className="mt-10">
+  <h2 className="text-2xl mb-4">Campaign Mapping</h2>
+
+  <Button
+    onClick={() => {
+      resetCampaignForm();
+      setCampaignModalOpen(true);
+    }}
+    className="mb-4 cursor-pointer"
+  >
+    + Add Mapping
+  </Button>
+
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>Tag</TableHead>
+        <TableHead>Campaign</TableHead>
+        <TableHead>Actions</TableHead>
+      </TableRow>
+    </TableHeader>
+
+    <TableBody>
+      {campaignList.map((item) => (
+        <TableRow key={item._id}>
+          <TableCell>{item.tags}</TableCell>
+          <TableCell>{item.compaign}</TableCell>
+
+          <TableCell className="space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => editCampaign(item)}
+            >
+              Edit
+            </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash />
+                </Button>
+              </AlertDialogTrigger>
+
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete the mapping.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteCampaignItem(item._id)}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+  <Dialog
+    open={campaignModalOpen}
+    onOpenChange={(open) => {
+      setCampaignModalOpen(open);
+      if (!open) resetCampaignForm();
+    }}
+  >
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>
+          {campaignEditId ? "Edit Mapping" : "Add Mapping"}
+        </DialogTitle>
+      </DialogHeader>
+
+      <div className="space-y-4">
+        <Input
+          placeholder="Tag (from GHL)"
+          value={campaignForm.tags}
+          onChange={(e) =>
+            setCampaignForm({ ...campaignForm, tags: e.target.value })
+          }
+        />
+
+        <Input
+          placeholder="Campaign (internal)"
+          value={campaignForm.compaign}
+          onChange={(e) =>
+            setCampaignForm({ ...campaignForm, compaign: e.target.value })
+          }
+        />
+      </div>
+      <DialogFooter className="mt-4 flex justify-end space-x-2">
+        <Button onClick={() => setCampaignModalOpen(false)}>
+          Cancel
+        </Button>
+        <Button onClick={saveCampaign}>
+          {campaignEditId ? "Update" : "Save"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+</div>
+
     </div>
   );
 }

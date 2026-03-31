@@ -2,6 +2,7 @@
 
 import connectDB from "@/lib/connectDb";
 import Credential from "@/models/Credential";
+import Mapping from "@/models/Mapping";
 import Sms from "@/models/Sms";
 import Test from "@/models/Test";
 import { revalidatePath } from "next/cache";
@@ -98,12 +99,11 @@ export async function createSms(payload: {
   sender_id: string;
   tags: string;
   text: string;
-  link: string;
 }) {
   try {
     await connectDB();
 
-    if (!payload.sender_id || !payload.text || !payload.tags || !payload.link) {
+    if (!payload.sender_id || !payload.text || !payload.tags) {
       return { success: false, message: "All fields are required" };
     }
 
@@ -122,7 +122,6 @@ export async function updateSms(
     sender_id: string;
     tags: string;
     text: string;
-    link: string;
   }
 ) {
   try {
@@ -156,5 +155,91 @@ export async function deleteSms(id: string) {
     return { success: true, message: "Deleted successfully" };
   } catch (error: any) {
     return { success: false, message: error.message };
+  }
+}
+
+export async function createCampaign(payload: {
+  tags: string;
+  compaign: string;
+}) {
+  try {
+    await connectDB();
+
+    if (!payload.tags || !payload.compaign) {
+      return { success: false, message: "All fields are required" };
+    }
+
+    const tagLower = payload.tags.toLowerCase().trim();
+
+    const exists = await Mapping.findOne({ tag: tagLower });
+    if (exists) {
+      return { success: false, message: "Tag already exists" };
+    }
+
+    await Mapping.create({
+      tags: tagLower,
+      compaign: payload.compaign.toLowerCase().trim(),
+    });
+
+    return { success: true, message: "Mapping created successfully" };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || "Server error",
+    };
+  }
+}
+
+export async function getCampaigns() {
+  try {
+    await connectDB();
+
+    const data = await Mapping.find().sort({ createdAt: -1 });
+
+    return JSON.parse(JSON.stringify(data));
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function updateCampaign(
+  id: string,
+  payload: { tags: string; compaign: string }
+) {
+  try {
+    await connectDB();
+
+    if (!payload.tags || !payload.compaign) {
+      return { success: false, message: "All fields are required" };
+    }
+
+    const tagLower = payload.tags.toLowerCase().trim();
+
+    await Mapping.findByIdAndUpdate(id, {
+      tags: tagLower,
+      compaign: payload.compaign.toLowerCase().trim(),
+    });
+
+    return { success: true, message: "Updated successfully" };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || "Server error",
+    };
+  }
+}
+
+export async function deleteCampaign(id: string) {
+  try {
+    await connectDB();
+
+    await Mapping.findByIdAndDelete(id);
+
+    return { success: true, message: "Deleted successfully" };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || "Server error",
+    };
   }
 }

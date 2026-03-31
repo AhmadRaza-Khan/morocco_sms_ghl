@@ -1,10 +1,9 @@
-import mongoose, { Schema, Document, models, model } from "mongoose";
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface ISms extends Document {
   sender_id: string;
   tags: string;
   text: string;
-  link: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,12 +25,12 @@ const SmsSchema = new Schema<ISms>(
       type: String,
       required: true,
     },
-    link: {
-      type: String,
-      required: true,
-    },
   },
   { timestamps: true }
 );
 
-export default models.Sms || model<ISms>("Sms", SmsSchema);
+const Sms: Model<ISms> =
+  mongoose.models.Sms ||
+  mongoose.model<ISms>("Sms", SmsSchema);
+
+export default Sms;

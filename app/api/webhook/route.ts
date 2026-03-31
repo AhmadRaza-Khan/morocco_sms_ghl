@@ -1,5 +1,7 @@
 import connectDB from "@/lib/connectDb";
+import Compaign from "@/models/Compaign";
 import Credential from "@/models/Credential";
+import Mapping from "@/models/Mapping";
 import Sms from "@/models/Sms";
 import Test from "@/models/Test";
 import axios from "axios"
@@ -59,13 +61,15 @@ export async function POST(req: Request) {
     const tags = body.tags;
     const tagsLower = tags.toLowerCase().trim();
     const cred = await Credential.findOne({ locationId });
+    const compaign = await Mapping.findOne({compaign: tagsLower})
+    const tag = compaign?.tags || tagsLower;
     if(!cred){
       return Response.json(
         { success: false, error: "Credentials not found" },
         { status: 404 }
       ); 
     }
-    const senderData = await Sms.findOne({ sender_id: cred.sender_id, tags: tagsLower })
+    const senderData = await Sms.findOne({ sender_id: cred.sender_id, tags: tag })
     if(!senderData){
       return Response.json(
         { success: false, error: "Sender not found" },
@@ -73,7 +77,7 @@ export async function POST(req: Request) {
       ); 
     }
 
-    const message = `Bonjour ${name},\n${senderData.text}\n👉 ${senderData.link}`;
+    const message = `Bonjour ${name},\n${senderData.text}`;
 
     const payload = {
       sub_account: cred.sub_account,
@@ -85,6 +89,44 @@ export async function POST(req: Request) {
     };
 
     const sendRequest = async () => {
+      if(tag == "review request"){
+        const record = await Compaign.findOne({
+          phone: phone,
+          compaign: tag
+        })
+
+      if(!record){
+        const res = await axios.post(MOROCCO_API_URL, null, {
+          params: payload,
+          timeout: 10000,
+        });
+
+        if (res.data.error) {
+          throw new Error(res.data.error);
+        }
+        await Compaign.create({
+          phone: phone,
+          compaign: tag,
+          initialSend: true,
+          reminderSend: false,
+        });
+        console.log(`SMS sent to ${phone} (locationId: ${locationId})`);
+        return res.data;
+      } else if(record.initialSend && !record.reminderSend) {
+        const res = await axios.post(MOROCCO_API_URL, null, {
+          params: payload,
+          timeout: 10000,
+        });
+
+        if (res.data.error) {
+          throw new Error(res.data.error);
+        }
+        record.reminderSend = true;
+        await record.save();
+        console.log(`SMS sent to ${phone} (locationId: ${locationId})`);
+        return res.data;
+      }
+    } else {
       const res = await axios.post(MOROCCO_API_URL, null, {
         params: payload,
         timeout: 10000,
@@ -93,19 +135,18 @@ export async function POST(req: Request) {
       if (res.data.error) {
         throw new Error(res.data.error);
       }
-
+      console.log(`SMS sent to ${phone} (locationId: ${locationId})`);
       return res.data;
+    }
     };
 
     const result = await retry(sendRequest, { retries: 1, delay: 1000 });
-
-    console.log(`SMS sent to ${phone} (locationId: ${locationId})`);
 
     return Response.json({
       success: true,
       message: "Webhook processed successfully",
       result,
-    });
+    }); 
   } catch (error: any) {
     console.error("Webhook Error:", error);
     return Response.json(
@@ -119,7 +160,7 @@ export async function GET(req: Request) {
   try {
     await connectDB();
 
-    const data = await Test.find();
+    const data = await Compaign.find();
     return Response.json({
       success: true,
       data
@@ -148,3 +189,4 @@ export async function DELETE(req: Request) {
     );
   }
 }
+
