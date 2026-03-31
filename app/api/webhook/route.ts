@@ -96,14 +96,14 @@ export async function POST(req: Request) {
         })
 
       if(!record){
-        const res = await axios.post(MOROCCO_API_URL, null, {
-          params: payload,
-          timeout: 10000,
-        });
+        // const res = await axios.post(MOROCCO_API_URL, null, {
+        //   params: payload,
+        //   timeout: 10000,
+        // });
 
-        if (res.data.error) {
-          throw new Error(res.data.error);
-        }
+        // if (res.data.error) {
+        //   throw new Error(res.data.error);
+        // }
         await Compaign.create({
           phone: phone,
           compaign: tag,
@@ -111,32 +111,35 @@ export async function POST(req: Request) {
           reminderSend: false,
         });
         console.log(`SMS sent to ${phone} (locationId: ${locationId})`);
-        return res.data;
+        // return res.data;
+        return `webhook went first time`
       } else if(record.initialSend && !record.reminderSend) {
-        const res = await axios.post(MOROCCO_API_URL, null, {
-          params: payload,
-          timeout: 10000,
-        });
+        // const res = await axios.post(MOROCCO_API_URL, null, {
+        //   params: payload,
+        //   timeout: 10000,
+        // });
 
-        if (res.data.error) {
-          throw new Error(res.data.error);
-        }
+        // if (res.data.error) {
+        //   throw new Error(res.data.error);
+        // }
         record.reminderSend = true;
         await record.save();
         console.log(`SMS sent to ${phone} (locationId: ${locationId})`);
-        return res.data;
+        // return res.data;
+        return `webhook went second time`
       }
     } else {
-      const res = await axios.post(MOROCCO_API_URL, null, {
-        params: payload,
-        timeout: 10000,
-      });
+      // const res = await axios.post(MOROCCO_API_URL, null, {
+      //   params: payload,
+      //   timeout: 10000,
+      // });
 
-      if (res.data.error) {
-        throw new Error(res.data.error);
-      }
+      // if (res.data.error) {
+      //   throw new Error(res.data.error);
+      // }
       console.log(`SMS sent to ${phone} (locationId: ${locationId})`);
-      return res.data;
+      // return res.data;
+      return `other tags`
     }
     };
 
@@ -160,7 +163,7 @@ export async function GET(req: Request) {
   try {
     await connectDB();
 
-    const data = await Test.find();
+    const data = await Compaign.find();
     return Response.json({
       success: true,
       data
