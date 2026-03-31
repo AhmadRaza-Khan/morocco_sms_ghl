@@ -160,7 +160,7 @@ export async function GET(req: Request) {
   try {
     await connectDB();
 
-    const data = await Compaign.find();
+    const data = await Test.find();
     return Response.json({
       success: true,
       data

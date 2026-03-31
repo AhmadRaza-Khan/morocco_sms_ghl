@@ -501,8 +501,8 @@ const resetCampaignForm = () => {
   <Table>
     <TableHeader>
       <TableRow>
+        <TableHead>Compaign</TableHead>
         <TableHead>Tag</TableHead>
-        <TableHead>Campaign</TableHead>
         <TableHead>Actions</TableHead>
       </TableRow>
     </TableHeader>
@@ -568,7 +568,7 @@ const resetCampaignForm = () => {
 
       <div className="space-y-4">
         <Input
-          placeholder="Tag (from GHL)"
+          placeholder="Campaign (internal)"
           value={campaignForm.tags}
           onChange={(e) =>
             setCampaignForm({ ...campaignForm, tags: e.target.value })
@@ -576,7 +576,7 @@ const resetCampaignForm = () => {
         />
 
         <Input
-          placeholder="Campaign (internal)"
+          placeholder="Tag (from GHL)"
           value={campaignForm.compaign}
           onChange={(e) =>
             setCampaignForm({ ...campaignForm, compaign: e.target.value })
