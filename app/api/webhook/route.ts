@@ -61,15 +61,24 @@ export async function POST(req: Request) {
     const tags = body.tags;
     const tagsLower = tags.toLowerCase().trim();
     const cred = await Credential.findOne({ locationId });
+    let tag =tagsLower;
     const compaign = await Mapping.findOne({compaign: tagsLower})
-    const tag = compaign?.tags || tagsLower;
+    if(compaign?.tags){
+      tag = compaign?.tags;
+    }
+
+    console.log(tag);
     if(!cred){
       return Response.json(
         { success: false, error: "Credentials not found" },
         { status: 404 }
       ); 
     }
-    const senderData = await Sms.findOne({ sender_id: cred.sender_id, tags: tag })
+    let senderData = await Sms.findOne({ sender_id: cred.sender_id, tags: tag });
+    if(!senderData){
+      senderData = await Sms.findOne({ sender_id: cred.sender_id, tags: "review request" });
+    }
+
     if(!senderData){
       return Response.json(
         { success: false, error: "Sender not found" },
@@ -89,7 +98,7 @@ export async function POST(req: Request) {
     };
 
     const sendRequest = async () => {
-      if(tag == "review request"){
+      if(tag == "review request" || tag == "reminder"){
         const record = await Compaign.findOne({
           phone: phone,
           compaign: tag
@@ -138,6 +147,7 @@ export async function POST(req: Request) {
       //   throw new Error(res.data.error);
       // }
       console.log(`SMS sent to ${phone} (locationId: ${locationId})`);
+      await Test.create({data: body});
       // return res.data;
       return `other tags`
     }
@@ -164,9 +174,11 @@ export async function GET(req: Request) {
     await connectDB();
 
     const data = await Compaign.find();
+    const test = await Test.find();
     return Response.json({
       success: true,
-      data
+      data,
+      test
     });
   } catch (error: any) {
     return Response.json(
