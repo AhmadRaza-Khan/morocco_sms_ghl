@@ -2,6 +2,7 @@ import connectDB from "@/lib/connectDb";
 import Compaign from "@/models/Compaign";
 import Credential from "@/models/Credential";
 import Mapping from "@/models/Mapping";
+import NonCompaign from "@/models/NonCompaigns";
 import Sms from "@/models/Sms";
 import Test from "@/models/Test";
 import axios from "axios"
@@ -147,7 +148,11 @@ export async function POST(req: Request) {
       //   throw new Error(res.data.error);
       // }
       console.log(`SMS sent to ${phone} (locationId: ${locationId})`);
-      await Test.create({data: body});
+      await NonCompaign.create({
+        phone: phone,
+        compaign: tag,
+        send: true,
+      });
       // return res.data;
       return `other tags`
     }
